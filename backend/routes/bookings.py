@@ -1,4 +1,5 @@
 import json
+import math
 import random
 import string
 from flask import Blueprint, request, jsonify, g
@@ -12,17 +13,47 @@ from backend.extensions import limiter
 
 bp = Blueprint('bookings', __name__, url_prefix='/api/bookings')
 
+MAX_PASSENGERS = 9
+MAX_LEGS = 6
+MIN_FARE, MAX_FARE = 1.0, 20000.0
+
+
+def _valid_fare(value):
+    try:
+        fare = float(value)
+    except (TypeError, ValueError):
+        return None
+    return fare if math.isfinite(fare) and MIN_FARE <= fare <= MAX_FARE else None
+
+
+def _valid_passengers(pax):
+    if not isinstance(pax, list) or not 1 <= len(pax) <= MAX_PASSENGERS:
+        return False
+    return all(isinstance(p, dict) for p in pax)
+
+
+def _clean(value, limit=100):
+    return str(value).strip()[:limit]
+
 @bp.route('', methods=['POST'])
 @jwt_required
 @limiter.limit("10 per minute")
 def create_booking():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'JSON body required'}), 400
     required = ['flight_id', 'origin', 'destination', 'departure_date', 'airline', 'base_fare', 'passengers']
     if not all(data.get(f) for f in required):
         return jsonify({'error': f'Required fields: {", ".join(required)}'}), 400
 
+    base_fare = _valid_fare(data['base_fare'])
+    if base_fare is None:
+        return jsonify({'error': 'Invalid base_fare'}), 400
+    if not _valid_passengers(data['passengers']):
+        return jsonify({'error': f'passengers must be a list of 1-{MAX_PASSENGERS} objects'}), 400
+
     pricing = calculate_total(
-        base_fare=float(data['base_fare']),
+        base_fare=base_fare,
         passengers=len(data['passengers']),
         baggage_option=data.get('baggage', 'carry_on'),
         seat_option=data.get('seat', 'standard'),
@@ -36,13 +67,13 @@ def create_booking():
     booking = Booking(
         reference=ref,
         user_id=g.user_id,
-        flight_id=data['flight_id'],
-        origin=data['origin'].upper(),
-        destination=data['destination'].upper(),
-        departure_date=data['departure_date'],
-        airline=data['airline'],
-        flight_number=data.get('flight_number'),
-        cabin_class=data.get('cabin', 'economy'),
+        flight_id=_clean(data['flight_id']),
+        origin=_clean(data['origin'], 10).upper(),
+        destination=_clean(data['destination'], 10).upper(),
+        departure_date=_clean(data['departure_date'], 20),
+        airline=_clean(data['airline']),
+        flight_number=_clean(data['flight_number'], 20) if data.get('flight_number') else None,
+        cabin_class=_clean(data.get('cabin', 'economy'), 20),
         passengers_json=json.dumps(data['passengers']),
         passenger_count=len(data['passengers']),
         base_fare_usd=pricing['base_fare'],
@@ -67,17 +98,28 @@ def create_booking():
 @jwt_required
 @limiter.limit("5 per minute")
 def create_multicity_booking():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'JSON body required'}), 400
     legs = data.get('legs', [])
     passengers = data.get('passengers', [])
     baggage = data.get('baggage', 'carry_on')
     seat = data.get('seat', 'standard')
     cabin = data.get('cabin', 'economy')
 
-    if len(legs) < 2:
+    if not isinstance(legs, list) or len(legs) < 2:
         return jsonify({'error': 'At least 2 legs required for multi-city booking'}), 400
-    if not passengers:
-        return jsonify({'error': 'passengers required'}), 400
+    if len(legs) > MAX_LEGS:
+        return jsonify({'error': f'Maximum {MAX_LEGS} legs allowed'}), 400
+    if not _valid_passengers(passengers):
+        return jsonify({'error': f'passengers must be a list of 1-{MAX_PASSENGERS} objects'}), 400
+
+    leg_fields = ('base_fare', 'flight_id', 'origin', 'destination', 'date', 'airline')
+    for i, leg in enumerate(legs, 1):
+        if not isinstance(leg, dict) or not all(leg.get(f) for f in leg_fields):
+            return jsonify({'error': f'Leg {i}: required fields: {", ".join(leg_fields)}'}), 400
+        if _valid_fare(leg['base_fare']) is None:
+            return jsonify({'error': f'Leg {i}: invalid base_fare'}), 400
 
     group_ref = 'AF' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
@@ -86,7 +128,7 @@ def create_multicity_booking():
 
     for leg in legs:
         pricing = calculate_total(
-            base_fare=float(leg['base_fare']),
+            base_fare=_valid_fare(leg['base_fare']),
             passengers=len(passengers),
             baggage_option=baggage,
             seat_option=seat,
@@ -98,13 +140,13 @@ def create_multicity_booking():
         booking = Booking(
             reference=ref,
             user_id=g.user_id,
-            flight_id=leg['flight_id'],
-            origin=leg['origin'].upper(),
-            destination=leg['destination'].upper(),
-            departure_date=leg['date'],
-            airline=leg['airline'],
-            flight_number=leg.get('flight_number'),
-            cabin_class=cabin,
+            flight_id=_clean(leg['flight_id']),
+            origin=_clean(leg['origin'], 10).upper(),
+            destination=_clean(leg['destination'], 10).upper(),
+            departure_date=_clean(leg['date'], 20),
+            airline=_clean(leg['airline']),
+            flight_number=_clean(leg['flight_number'], 20) if leg.get('flight_number') else None,
+            cabin_class=_clean(cabin, 20),
             passengers_json=json.dumps(passengers),
             passenger_count=len(passengers),
             base_fare_usd=pricing['base_fare'],

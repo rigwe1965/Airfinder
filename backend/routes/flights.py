@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from backend.services.mock_flights import search_flights, get_featured_routes, get_airports, get_cheapest_price
@@ -13,7 +14,7 @@ def search():
     origin = request.args.get('origin', '').upper()
     destination = request.args.get('destination', '').upper()
     departure_date = request.args.get('departure_date')
-    passengers = int(request.args.get('passengers', 1))
+    passengers = request.args.get('passengers', 1, type=int)
     cabin = request.args.get('cabin', 'economy')
     return_date = request.args.get('return_date')
 
@@ -45,7 +46,7 @@ def search():
 @limiter.limit("30 per minute")
 def ai_search():
     data = request.get_json()
-    query = data.get('query', '').strip()
+    query = str(data.get('query', '')).strip()[:200]
     if not query:
         return jsonify({'error': 'query is required'}), 400
 
@@ -187,6 +188,12 @@ def flight_status():
 
     if not flight_number:
         return jsonify({'error': 'flight number required'}), 400
+    if not re.fullmatch(r'[A-Z0-9]{2,3}\d{1,4}[A-Z]?', flight_number):
+        return jsonify({'error': 'invalid flight number'}), 400
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
     # Derive deterministic but realistic mock data from flight number + date
     seed = int(hashlib.md5(f"{flight_number}{date_str}".encode()).hexdigest(), 16) % (2**31)

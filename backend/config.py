@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
-    JWT_SECRET = os.getenv('JWT_SECRET', 'dev-jwt-secret')
+    IS_DEV = os.getenv('FLASK_ENV') == 'development'
+    SECRET_KEY = os.getenv('SECRET_KEY') or ('dev-secret-key' if IS_DEV else None)
+    JWT_SECRET = os.getenv('JWT_SECRET') or ('dev-jwt-secret' if IS_DEV else None)
+    PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL', 'http://localhost:5000').rstrip('/')
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///airfinder.db').replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -20,7 +22,8 @@ class Config:
     SERVICE_FEE_USD = float(os.getenv('DEFAULT_SERVICE_FEE_USD', 15))
     COMMISSION_PERCENT = float(os.getenv('DEFAULT_COMMISSION_PERCENT', 3))
 
-    SUPER_ADMIN_EMAIL = os.getenv('SUPER_ADMIN_EMAIL', 'admin@airfinder.com')
-    SUPER_ADMIN_PASSWORD = os.getenv('SUPER_ADMIN_PASSWORD', 'Admin@2024!')
+    SUPER_ADMIN_EMAIL = os.getenv('SUPER_ADMIN_EMAIL')
+    SUPER_ADMIN_PASSWORD = os.getenv('SUPER_ADMIN_PASSWORD')
+    MAX_CONTENT_LENGTH = 64 * 1024
 
     PORT = int(os.getenv('PORT', 5000))

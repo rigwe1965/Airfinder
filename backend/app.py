@@ -13,6 +13,14 @@ def create_app():
                 instance_path=os.path.join(_base, 'instance'))
     app.config.from_object(Config)
 
+    _weak = {'dev-secret-key', 'dev-jwt-secret', 'Admin@2024!'}
+    for key in ('SECRET_KEY', 'JWT_SECRET', 'SUPER_ADMIN_EMAIL', 'SUPER_ADMIN_PASSWORD'):
+        val = app.config.get(key)
+        if not val:
+            raise RuntimeError(f'{key} must be set (see .env.example / Render env vars)')
+        if not Config.IS_DEV and (val in _weak or (key != 'SUPER_ADMIN_EMAIL' and len(val) < 12)):
+            raise RuntimeError(f'{key} is missing or too weak for production')
+
     allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(',')
     CORS(app, resources={r'/api/*': {'origins': [o.strip() for o in allowed_origins]}})
     limiter.init_app(app)
@@ -29,17 +37,18 @@ def create_app():
     app.register_blueprint(staff_mgmt.bp)
 
     @app.route('/api/demo-request', methods=['POST'])
+    @limiter.limit('3 per hour')
     def demo_request():
         from flask import request
         import json, datetime
         data = request.get_json(silent=True) or {}
         entry = {
             'timestamp': datetime.datetime.utcnow().isoformat(),
-            'name': data.get('name', ''),
-            'company': data.get('company', ''),
-            'email': data.get('email', ''),
-            'phone': data.get('phone', ''),
-            'message': data.get('message', ''),
+            'name': str(data.get('name', ''))[:100],
+            'company': str(data.get('company', ''))[:100],
+            'email': str(data.get('email', ''))[:150],
+            'phone': str(data.get('phone', ''))[:40],
+            'message': str(data.get('message', ''))[:1000],
         }
         log_path = os.path.join(os.path.dirname(__file__), '..', 'demo_requests.log')
         with open(log_path, 'a', encoding='utf-8') as f:
@@ -63,6 +72,15 @@ def create_app():
     def admin_pages(filename):
         return send_from_directory(os.path.join(app.static_folder, 'admin'), filename)
 
+    @app.after_request
+    def security_headers(resp):
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
+        resp.headers['X-Frame-Options'] = 'DENY'
+        resp.headers['Referrer-Policy'] = 'same-origin'
+        if not Config.IS_DEV:
+            resp.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return resp
+
     @app.errorhandler(404)
     def not_found(e):
         return jsonify({'error': 'Not found'}), 404
@@ -75,4 +93,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=Config.PORT, debug=True)
+    app.run(host='127.0.0.1', port=Config.PORT, debug=Config.IS_DEV)

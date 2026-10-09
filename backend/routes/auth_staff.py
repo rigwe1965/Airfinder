@@ -116,23 +116,19 @@ def forgot_password():
     staff.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
     db.session.commit()
 
-    reset_url = f"{request.host_url}admin/reset-password.html#{token}"
+    reset_url = f"{current_app.config['PUBLIC_BASE_URL']}/admin/reset-password.html#{token}"
 
-    # Try to send email; fall back to returning the link directly (dev/no-mail mode)
     try:
-        msg = Message(
+        mail.send(Message(
             subject='Airfinder Staff — Password Reset',
             recipients=[staff.email],
             body=f"Click the link below to reset your password (valid 1 hour):\n\n{reset_url}\n\nIf you did not request this, ignore this email."
-        )
-        mail.send(msg)
-        return jsonify({'message': 'If that email exists, a reset link has been sent.'}), 200
+        ))
     except Exception:
-        # Mail not configured — return link so staff can still reset
-        return jsonify({
-            'message': 'Mail not configured. Use this link to reset your password:',
-            'reset_url': reset_url,
-        }), 200
+        current_app.logger.error("Staff reset mail failed for staff %s", staff.id)
+        if current_app.debug:  # dev convenience only; never expose the link in a response
+            current_app.logger.warning("DEV reset url: %s", reset_url)
+    return jsonify({'message': 'If that email exists, a reset link has been sent.'}), 200
 
 
 @bp.route('/reset-password', methods=['POST'])

@@ -1,6 +1,7 @@
 import jwt
 import bcrypt
 import uuid
+import re
 import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app, g
@@ -13,13 +14,30 @@ from backend.extensions import limiter
 
 bp = Blueprint('auth_customer', __name__, url_prefix='/api/auth')
 
+_EMAIL_RE = re.compile(r'^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$')
+_NAME_RE = re.compile(r"^[^<>]{1,100}$")
+
+
+def _bad_name(value):
+    return not isinstance(value, str) or not _NAME_RE.match(value.strip())
+
 @bp.route('/register', methods=['POST'])
 @limiter.limit("10 per hour")
 def register():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'JSON body required'}), 400
     required = ['email', 'password', 'first_name', 'last_name']
     if not all(data.get(f) for f in required):
         return jsonify({'error': 'All fields required: email, password, first_name, last_name'}), 400
+    if not all(isinstance(data[f], str) for f in required):
+        return jsonify({'error': 'Invalid field types'}), 400
+    if not _EMAIL_RE.match(data['email']) or len(data['email']) > 255:
+        return jsonify({'error': 'Invalid email address'}), 400
+    if _bad_name(data['first_name']) or _bad_name(data['last_name']):
+        return jsonify({'error': 'Names may not contain < or >'}), 400
+    if len(data['password']) > 128:
+        return jsonify({'error': 'Password too long'}), 400
 
     if User.query.filter_by(email=data['email'].lower()).first():
         return jsonify({'error': 'Email already registered'}), 409
@@ -33,9 +51,9 @@ def register():
     user = User(
         email=data['email'].lower(),
         password_hash=hashed.decode('utf-8'),
-        first_name=data['first_name'],
-        last_name=data['last_name'],
-        phone=data.get('phone'),
+        first_name=data['first_name'].strip(),
+        last_name=data['last_name'].strip(),
+        phone=str(data['phone'])[:30] if data.get('phone') else None,
         verification_token=verification_token,
         is_verified=True,  # Auto-verify for demo; set False + send email for production
     )
@@ -85,8 +103,7 @@ def forgot_password():
     user.reset_token_expiry = datetime.utcnow() + timedelta(minutes=15)
     db.session.commit()
 
-    base_url = request.host_url.rstrip('/')
-    reset_link = f"{base_url}/auth/reset-password.html#{token}"
+    reset_link = f"{current_app.config['PUBLIC_BASE_URL']}/auth/reset-password.html#{token}"
     send_password_reset_email(user.email, user.first_name, reset_link)
 
     return jsonify({'message': 'If that email exists, a reset link was sent.'})
@@ -141,6 +158,9 @@ def update_me():
 
     if not first_name or not last_name:
         return jsonify({'error': 'First name and last name are required'}), 400
+    if _bad_name(first_name) or _bad_name(last_name):
+        return jsonify({'error': 'Names may not contain < or >'}), 400
+    phone = phone[:30]
 
     user.first_name = first_name
     user.last_name = last_name

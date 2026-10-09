@@ -19,6 +19,8 @@ def client(app):
 
 @pytest.fixture(autouse=True)
 def clean_db(app):
+    from backend.extensions import limiter
+    limiter.reset()
     with app.app_context():
         _db.drop_all()
         _db.create_all()

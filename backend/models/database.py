@@ -50,7 +50,7 @@ def _seed_super_admin(app):
         first_name='Super',
         last_name='Admin',
         role=StaffRole.SUPER_ADMIN,
-        must_change_password=False,
+        must_change_password=True,
         is_active=True
     )
     db.session.add(super_admin)
