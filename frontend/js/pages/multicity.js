@@ -167,6 +167,7 @@ function proceedToBooking() {
       airline: flight.airline,
       flight_number: flight.flight_number,
       base_fare: flight.pricing.base_fare,
+      quote: flight.quote,
       pricing: flight.pricing,
       departure_time: flight.departure_time,
       arrival_time: flight.arrival_time,

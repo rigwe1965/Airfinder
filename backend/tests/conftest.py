@@ -29,3 +29,12 @@ def clean_db(app):
     yield
     with app.app_context():
         _db.session.remove()
+
+
+def with_quote(app, data):
+    """Return `data` plus a valid server-signed fare quote (what a real search result carries)."""
+    from backend.services.quotes import sign_quote
+    with app.app_context():
+        q = sign_quote(data['flight_id'], data['origin'], data['destination'], data['departure_date'],
+                       data.get('cabin', 'economy'), data['airline'], data['base_fare'])
+    return {**data, 'quote': q}

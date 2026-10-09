@@ -183,16 +183,17 @@ def test_emails_escape_user_data(app, monkeypatch):
         assert '<script>' not in body and '<img' not in body
 
 
-def _booked_with_passport(client):
+def _booked_with_passport(client, app):
     _, tok = _customer_token(client, email='pp@example.com')
     h = {'Authorization': f'Bearer {tok}'}
-    b = client.post('/api/bookings', headers=h, json={
-        **BOOKING, 'passengers': [{'first_name': 'A', 'last_name': 'B', 'passport': 'P1234567'}]}).get_json()['booking']
+    from backend.tests.conftest import with_quote
+    b = client.post('/api/bookings', headers=h, json=with_quote(app, {
+        **BOOKING, 'passengers': [{'first_name': 'A', 'last_name': 'B', 'passport': 'P1234567'}]})).get_json()['booking']
     return h, b['id']
 
 
 def test_owner_sees_passport_staff_lists_do_not(client, app):
-    h, bid = _booked_with_passport(client)
+    h, bid = _booked_with_passport(client, app)
     assert 'P1234567' in client.get(f'/api/bookings/{bid}', headers=h).get_data(as_text=True)
     _, admin_tok = _staff_token(client, app, email='a1@x.com', role='admin')
     ah = {'Authorization': f'Bearer {admin_tok}'}
@@ -202,7 +203,7 @@ def test_owner_sees_passport_staff_lists_do_not(client, app):
 
 
 def test_finance_never_sees_passport(client, app):
-    h, bid = _booked_with_passport(client)
+    h, bid = _booked_with_passport(client, app)
     _, fin_tok = _staff_token(client, app, email='fin@x.com', role='finance')
     fh = {'Authorization': f'Bearer {fin_tok}'}
     for url in ('/api/bookings', '/api/admin/bookings', f'/api/bookings/{bid}'):
@@ -236,3 +237,128 @@ def test_frontend_has_no_inline_scripts_or_handlers():
         if re.search(r'(href|src)\s*=\s*["\']\s*javascript:', text, re.I):
             bad.append(f'{f.relative_to(root)}: javascript: URL')
     assert not bad, bad
+
+
+# ---- signed fare quotes --------------------------------------------------------
+def _post(client, tok, data):
+    return client.post('/api/bookings', json=data, headers={'Authorization': f'Bearer {tok}'})
+
+
+def test_booking_requires_valid_quote(client, app):
+    from backend.tests.conftest import with_quote
+    _, tok = _customer_token(client)
+    good = with_quote(app, BOOKING)
+    assert _post(client, tok, good).status_code == 201
+    # no quote
+    r = _post(client, tok, BOOKING)
+    assert r.status_code == 400 and r.get_json()['code'] == 'quote_invalid'
+    # garbage quote
+    assert _post(client, tok, {**BOOKING, 'quote': 'x.y'}).status_code == 400
+    assert _post(client, tok, {**BOOKING, 'quote': 12345}).status_code == 400
+
+
+@pytest.mark.parametrize('field,value', [
+    ('base_fare', 5), ('airline', 'Other Air'), ('flight_id', 'zzz'),
+    ('origin', 'ABV'), ('destination', 'JFK'), ('departure_date', '2027-01-01'), ('cabin', 'first'),
+])
+def test_quote_binds_every_field(client, app, field, value):
+    from backend.tests.conftest import with_quote
+    _, tok = _customer_token(client)
+    tampered = {**with_quote(app, BOOKING), field: value}
+    assert _post(client, tok, tampered).status_code == 400
+
+
+def test_expired_quote_rejected(client, app, monkeypatch):
+    import time
+    from backend.tests.conftest import with_quote
+    from backend.services import quotes
+    _, tok = _customer_token(client)
+    good = with_quote(app, BOOKING)
+    later = time.time() + quotes.QUOTE_TTL_SECONDS + 5
+    monkeypatch.setattr(quotes.time, 'time', lambda: later)
+    assert _post(client, tok, good).status_code == 400
+
+
+def test_quote_signed_with_wrong_key_rejected(client, app):
+    from backend.tests.conftest import with_quote
+    _, tok = _customer_token(client)
+    good = with_quote(app, BOOKING)
+    exp, _, mac = good['quote'].partition('.')
+    forged = {**good, 'quote': f"{exp}.{'0' * len(mac)}"}
+    assert _post(client, tok, forged).status_code == 400
+
+
+def test_search_results_carry_verifiable_quotes(client, app):
+    r = client.get('/api/flights/search?origin=LOS&destination=LHR&departure_date=2026-12-01')
+    flights = r.get_json()['results']
+    assert flights and all('quote' in f for f in flights)
+    f = flights[0]
+    _, tok = _customer_token(client)
+    r = _post(client, tok, {
+        'flight_id': f['id'], 'origin': f['origin'], 'destination': f['destination'],
+        'departure_date': f['departure_date'], 'airline': f['airline'], 'cabin': f['cabin'],
+        'flight_number': f['flight_number'], 'base_fare': f['pricing']['base_fare'], 'quote': f['quote'],
+        'passengers': [{'first_name': 'A', 'last_name': 'B'}]})
+    assert r.status_code == 201
+    assert r.get_json()['booking']['pricing']['base_fare'] == f['pricing']['base_fare']
+
+
+def test_multicity_requires_quotes(client, app):
+    _, tok = _customer_token(client)
+    legs = []
+    for d in ('2026-12-01', '2026-12-10'):
+        res = client.get(f'/api/flights/search?origin=LOS&destination=LHR&departure_date={d}').get_json()['results'][0]
+        legs.append({'flight_id': res['id'], 'origin': res['origin'], 'destination': res['destination'], 'date': d,
+                     'airline': res['airline'], 'base_fare': res['pricing']['base_fare'], 'quote': res['quote']})
+    body = {'legs': legs, 'passengers': [{'first_name': 'A', 'last_name': 'B'}], 'cabin': 'economy'}
+    ok = client.post('/api/bookings/multicity', json=body, headers={'Authorization': f'Bearer {tok}'})
+    assert ok.status_code == 201
+    legs[1] = {**legs[1], 'base_fare': 1}
+    bad = client.post('/api/bookings/multicity', json={**body, 'legs': legs}, headers={'Authorization': f'Bearer {tok}'})
+    assert bad.status_code == 400 and 'Leg 2' in bad.get_json()['error']
+    no_q = [{k: v for k, v in l.items() if k != 'quote'} for l in legs]
+    assert client.post('/api/bookings/multicity', json={**body, 'legs': no_q}, headers={'Authorization': f'Bearer {tok}'}).status_code == 400
+
+
+# ---- rate limiting -----------------------------------------------------------
+def test_login_throttled_per_account_across_ips(client):
+    codes = []
+    for i in range(12):
+        r = client.post('/api/auth/login', json={'email': 'victim@example.com', 'password': 'wrong-pass'},
+                        environ_overrides={'REMOTE_ADDR': f'10.0.0.{i}'})
+        codes.append(r.status_code)
+    assert codes[:10] == [401] * 10
+    assert 429 in codes[10:]
+
+
+def test_staff_login_throttled_per_account(client):
+    codes = [client.post('/api/staff/auth/login', json={'email': 'x@example.com', 'password': 'bad'},
+                         environ_overrides={'REMOTE_ADDR': f'10.1.0.{i}'}).status_code for i in range(12)]
+    assert 429 in codes
+
+
+def test_other_accounts_unaffected_by_throttle(client):
+    for i in range(11):
+        client.post('/api/auth/login', json={'email': 'a@example.com', 'password': 'bad'},
+                    environ_overrides={'REMOTE_ADDR': f'10.2.0.{i}'})
+    r = client.post('/api/auth/login', json={'email': 'b@example.com', 'password': 'bad'},
+                    environ_overrides={'REMOTE_ADDR': '10.2.9.9'})
+    assert r.status_code == 401
+
+
+def test_proxy_fix_uses_real_client_ip():
+    from flask import Flask
+    from backend.app import apply_proxy_fix
+
+    def make(hops):
+        a = Flask(__name__)
+        a.add_url_rule('/ip', 'ip', lambda: __import__('flask').request.remote_addr)
+        return apply_proxy_fix(a, hops).test_client()
+
+    hdr = {'X-Forwarded-For': '203.0.113.9'}
+    assert make(1).get('/ip', headers=hdr, environ_overrides={'REMOTE_ADDR': '10.0.0.1'}).get_data(as_text=True) == '203.0.113.9'
+    # not trusted unless configured: a spoofed header is ignored
+    assert make(0).get('/ip', headers=hdr, environ_overrides={'REMOTE_ADDR': '10.0.0.1'}).get_data(as_text=True) == '10.0.0.1'
+    # only the last (trusted) hop counts: a client-prepended fake entry is ignored
+    spoof = {'X-Forwarded-For': '6.6.6.6, 203.0.113.9'}
+    assert make(1).get('/ip', headers=spoof, environ_overrides={'REMOTE_ADDR': '10.0.0.1'}).get_data(as_text=True) == '203.0.113.9'

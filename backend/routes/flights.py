@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from backend.services.mock_flights import search_flights, get_featured_routes, get_airports, get_cheapest_price
 from backend.services.ai_search import parse_natural_language
+from backend.services.quotes import attach_quotes
 from backend.services.pricing import calculate_total, BAGGAGE_FEES, SEAT_FEES
 from backend.extensions import limiter
 
@@ -22,7 +23,7 @@ def search():
         return jsonify({'error': 'origin, destination, and departure_date are required'}), 400
 
     passengers = max(1, min(passengers, 9))
-    results = search_flights(origin, destination, departure_date, passengers, cabin, return_date)
+    results = attach_quotes(search_flights(origin, destination, departure_date, passengers, cabin, return_date))
 
     # Apply budget filter if provided
     budget = request.args.get('budget_max')
@@ -59,13 +60,13 @@ def ai_search():
             'suggestion': 'Could not identify origin or destination. Try: "flight from Lagos to London next month"'
         })
 
-    results = search_flights(
+    results = attach_quotes(search_flights(
         parsed['origin'],
         parsed['destination'],
         parsed['departure_date'],
         parsed['passengers'],
         parsed['cabin'],
-    )
+    ))
 
     if parsed.get('budget_max_usd'):
         results = [r for r in results if r['pricing']['total'] <= parsed['budget_max_usd']]
@@ -96,7 +97,7 @@ def multicity_search():
         date = leg.get('date', '')
         if not origin or not destination or not date:
             return jsonify({'error': f'Leg {i+1}: origin, destination, and date required'}), 400
-        flights = search_flights(origin, destination, date, passengers, cabin)
+        flights = attach_quotes(search_flights(origin, destination, date, passengers, cabin))
         results.append({
             'leg_num': i + 1,
             'origin': origin,

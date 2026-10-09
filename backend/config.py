@@ -25,5 +25,7 @@ class Config:
     SUPER_ADMIN_EMAIL = os.getenv('SUPER_ADMIN_EMAIL')
     SUPER_ADMIN_PASSWORD = os.getenv('SUPER_ADMIN_PASSWORD')
     MAX_CONTENT_LENGTH = 64 * 1024
+    # Require a server-signed fare quote on booking (set QUOTE_ENFORCE=false only as an emergency switch)
+    QUOTE_ENFORCE = os.getenv('QUOTE_ENFORCE', 'true').lower() != 'false'
 
     PORT = int(os.getenv('PORT', 5000))

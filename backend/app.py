@@ -1,9 +1,25 @@
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 import os
+from werkzeug.middleware.proxy_fix import ProxyFix
 from backend.config import Config
 from backend.models.database import init_db
 from backend.extensions import limiter, mail
+
+def apply_proxy_fix(app, hops=None):
+    """Trust X-Forwarded-For from exactly `hops` reverse proxies (0/unset = trust none).
+
+    Without this, behind Render's load balancer every client shares the proxy's IP, so the
+    per-IP rate limits would be one global bucket. Set TRUSTED_PROXY_COUNT to the number of
+    proxies in front of the app (Render alone = 1; Cloudflare + Render = 2). Too high a value
+    lets clients spoof their IP; too low collapses everyone into one bucket.
+    """
+    if hops is None:
+        hops = int(os.getenv('TRUSTED_PROXY_COUNT', '0') or 0)
+    if hops > 0:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops)
+    return app
+
 
 # No inline scripts or handlers are allowed (see frontend/js/csp-actions.js). Styles keep
 # 'unsafe-inline' because pages use style="" attributes; Google Fonts is the only third party.
@@ -39,6 +55,7 @@ def create_app():
 
     allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(',')
     CORS(app, resources={r'/api/*': {'origins': [o.strip() for o in allowed_origins]}})
+    apply_proxy_fix(app)
     limiter.init_app(app)
     mail.init_app(app)
 

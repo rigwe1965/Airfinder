@@ -180,6 +180,7 @@ function getAddons() {
 }
 
 async function updatePriceSummary() {
+  if (!flight) return; // multi-city bookings render their own summary
   const { baggage, seat } = getAddons();
   try {
     const pricing = await api.post('/flights/pricing/calculate', {
@@ -236,6 +237,7 @@ async function completeBooking() {
       flight_number: flight.flight_number,
       cabin: flight.cabin,
       base_fare: flight.pricing.base_fare,
+      quote: flight.quote,
       passengers: getPassengers(),
       baggage, seat,
     });

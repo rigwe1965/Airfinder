@@ -2,12 +2,13 @@ import json
 import math
 import random
 import string
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from backend.models.database import db
 from backend.models.booking import Booking, BookingStatus, generate_reference
 from backend.models.user import User
 from backend.middleware.jwt_guard import jwt_required
 from backend.services.pricing import calculate_total
+from backend.services.quotes import verify_quote
 from backend.services.email_service import send_booking_confirmation_email, send_multicity_confirmation_email
 from backend.extensions import limiter
 
@@ -32,6 +33,16 @@ def _valid_passengers(pax):
     return all(isinstance(p, dict) for p in pax)
 
 
+QUOTE_ERROR = {'error': 'Fare quote is missing, invalid or expired. Please search again.', 'code': 'quote_invalid'}
+
+
+def _quote_ok(token, flight_id, origin, destination, date, cabin, airline, base_fare):
+    if not current_app.config.get('QUOTE_ENFORCE', True):
+        return True
+    return verify_quote(token, _clean(flight_id), _clean(origin, 10), _clean(destination, 10),
+                        _clean(date, 20), _clean(cabin, 20), _clean(airline), base_fare)
+
+
 def _clean(value, limit=100):
     return str(value).strip()[:limit]
 
@@ -51,6 +62,10 @@ def create_booking():
         return jsonify({'error': 'Invalid base_fare'}), 400
     if not _valid_passengers(data['passengers']):
         return jsonify({'error': f'passengers must be a list of 1-{MAX_PASSENGERS} objects'}), 400
+
+    if not _quote_ok(data.get('quote'), data['flight_id'], data['origin'], data['destination'],
+                     data['departure_date'], data.get('cabin', 'economy'), data['airline'], base_fare):
+        return jsonify(QUOTE_ERROR), 400
 
     pricing = calculate_total(
         base_fare=base_fare,
@@ -120,6 +135,9 @@ def create_multicity_booking():
             return jsonify({'error': f'Leg {i}: required fields: {", ".join(leg_fields)}'}), 400
         if _valid_fare(leg['base_fare']) is None:
             return jsonify({'error': f'Leg {i}: invalid base_fare'}), 400
+        if not _quote_ok(leg.get('quote'), leg['flight_id'], leg['origin'], leg['destination'],
+                         leg['date'], cabin, leg['airline'], _valid_fare(leg['base_fare'])):
+            return jsonify({**QUOTE_ERROR, 'error': f'Leg {i}: ' + QUOTE_ERROR['error']}), 400
 
     group_ref = 'AF' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 

@@ -99,3 +99,15 @@ attributes, no `javascript:` URLs** (a test fails if any appear).
 - A function is callable from markup only if registered: `Actions.register({ fn })` at the end of its script.
 - Built-ins: `unhide(id)`, `hide(id)`, `closeOnBackdrop`, `navigate(path)`, `goBack`.
 - Always wrap user-derived values in `escapeHtml()` before putting them in `innerHTML`.
+
+## Fare Quotes (anti price-tampering)
+- Every flight returned by search (`/search`, `/search/ai`, `/search/multicity`) carries a `quote`: an HMAC (SECRET_KEY)
+  over flight id, route, date, cabin, airline and base fare, valid 2h (`backend/services/quotes.py`).
+- `POST /api/bookings` and `/api/bookings/multicity` reject a fare whose quote is missing/invalid/expired
+  (`400 code=quote_invalid`). The frontend forwards `flight.quote` (booking.js, multicity.js).
+- Emergency switch: `QUOTE_ENFORCE=false`. Tests build quotes with `with_quote()` in `backend/tests/conftest.py`.
+
+## Rate limiting / proxies
+- Per-IP limits plus per-account limits on login (10 / 15 min) and forgot-password (3 / hour) — `email_key` in extensions.py.
+- `TRUSTED_PROXY_COUNT` = number of reverse proxies in front of the app (Render = 1; Cloudflare + Render = 2). Unset = trust none.
+- `RATELIMIT_STORAGE_URI` (e.g. a Redis URL) shares limits across gunicorn workers; default is per-worker memory.

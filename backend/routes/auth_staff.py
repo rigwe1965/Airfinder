@@ -7,13 +7,14 @@ from backend.models.database import db
 from backend.models.staff import Staff, StaffRole
 from backend.middleware.jwt_guard import staff_required, load_principal
 from backend.services.security_logger import log_security_event
-from backend.extensions import limiter, mail
+from backend.extensions import limiter, mail, email_key
 from flask_mail import Message
 
 bp = Blueprint('auth_staff', __name__, url_prefix='/api/staff/auth')
 
 @bp.route('/login', methods=['POST'])
 @limiter.limit("10 per minute")
+@limiter.limit("10 per 15 minutes", key_func=email_key)
 def staff_login():
     data = request.get_json()
     if not data.get('email') or not data.get('password'):
@@ -102,6 +103,7 @@ def _generate_staff_token(staff: Staff) -> str:
 
 @bp.route('/forgot-password', methods=['POST'])
 @limiter.limit("5 per minute")
+@limiter.limit("3 per hour", key_func=email_key)
 def forgot_password():
     data = request.get_json()
     email = (data.get('email') or '').lower().strip()
