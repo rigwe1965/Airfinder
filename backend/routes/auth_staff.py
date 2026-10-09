@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app, g
 from backend.models.database import db
 from backend.models.staff import Staff, StaffRole
-from backend.middleware.jwt_guard import staff_required
+from backend.middleware.jwt_guard import staff_required, load_principal
 from backend.services.security_logger import log_security_event
 from backend.extensions import limiter, mail
 from flask_mail import Message
@@ -38,6 +38,7 @@ def staff_login():
     })
 
 @bp.route('/change-password', methods=['POST'])
+@limiter.limit("10 per hour")
 def change_password():
     """Force-change temporary password — works even when must_change_password=True"""
     token = _extract_token()
@@ -49,9 +50,9 @@ def change_password():
     except jwt.InvalidTokenError:
         return jsonify({'error': 'Invalid token'}), 401
 
-    staff = Staff.query.get(payload['user_id'])
-    if not staff:
-        return jsonify({'error': 'Staff not found'}), 404
+    staff, err = load_principal(payload)
+    if err or not isinstance(staff, Staff):
+        return jsonify({'error': 'Invalid token'}), 401
 
     data = request.get_json()
     current_password = data.get('current_password')
@@ -72,6 +73,7 @@ def change_password():
     hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
     staff.password_hash = hashed.decode('utf-8')
     staff.must_change_password = False
+    staff.token_version = (staff.token_version or 0) + 1
     db.session.commit()
 
     new_token = _generate_staff_token(staff)
@@ -93,7 +95,7 @@ def _generate_staff_token(staff: Staff) -> str:
     payload = {
         'user_id': staff.id,
         'role': staff.role.value,
-        'must_change_password': staff.must_change_password,
+        'tv': staff.token_version or 0,
         'exp': datetime.utcnow() + timedelta(hours=12),
     }
     return jwt.encode(payload, current_app.config['JWT_SECRET'], algorithm='HS256')
@@ -144,12 +146,13 @@ def reset_password():
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
 
     staff = Staff.query.filter_by(reset_token=token).first()
-    if not staff or not staff.reset_token_expires or staff.reset_token_expires < datetime.utcnow():
+    if not staff or not staff.is_active or not staff.reset_token_expires or staff.reset_token_expires < datetime.utcnow():
         return jsonify({'error': 'Reset link is invalid or has expired'}), 400
 
     hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
     staff.password_hash = hashed.decode('utf-8')
     staff.must_change_password = False
+    staff.token_version = (staff.token_version or 0) + 1
     staff.reset_token = None
     staff.reset_token_expires = None
     db.session.commit()

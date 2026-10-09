@@ -61,7 +61,7 @@ def register():
     db.session.commit()
 
     send_welcome_email(user.email, user.first_name)
-    token = _generate_token(user.id, 'customer')
+    token = _generate_token(user)
 
     return jsonify({
         'message': 'Account created successfully',
@@ -84,7 +84,7 @@ def login():
     if not user.is_active:
         return jsonify({'error': 'Account deactivated. Contact support.'}), 403
 
-    token = _generate_token(user.id, 'customer')
+    token = _generate_token(user)
     return jsonify({'token': token, 'user': user.to_dict()})
 
 @bp.route('/forgot-password', methods=['POST'])
@@ -124,13 +124,14 @@ def reset_password():
     if not user:
         return jsonify({'error': 'Invalid or expired token'}), 400
 
-    if user.reset_token_expiry < datetime.utcnow():
+    if not user.is_active or not user.reset_token_expiry or user.reset_token_expiry < datetime.utcnow():
         return jsonify({'error': 'Reset link has expired. Request a new one.'}), 400
 
     hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
     user.password_hash = hashed.decode('utf-8')
     user.reset_token = None
     user.reset_token_expiry = None
+    user.token_version = (user.token_version or 0) + 1
     db.session.commit()
 
     return jsonify({'message': 'Password reset successfully. You can now log in.'})
@@ -200,15 +201,16 @@ def change_password():
 
     hashed = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt())
     user.password_hash = hashed.decode('utf-8')
+    user.token_version = (user.token_version or 0) + 1
     db.session.commit()
 
-    return jsonify({'message': 'Password changed successfully'})
+    return jsonify({'message': 'Password changed successfully', 'token': _generate_token(user)})
 
-def _generate_token(user_id: str, role: str, must_change_password=False) -> str:
+def _generate_token(user) -> str:
     payload = {
-        'user_id': user_id,
-        'role': role,
-        'must_change_password': must_change_password,
+        'user_id': user.id,
+        'role': 'customer',
+        'tv': user.token_version or 0,
         'exp': datetime.utcnow() + timedelta(hours=24),
     }
     return jwt.encode(payload, current_app.config['JWT_SECRET'], algorithm='HS256')

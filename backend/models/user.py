@@ -13,6 +13,7 @@ class User(db.Model):
     phone = db.Column(db.String(30))
     is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
+    token_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     verification_token = db.Column(db.String(255))
     reset_token = db.Column(db.String(255))
     reset_token_expiry = db.Column(db.DateTime)

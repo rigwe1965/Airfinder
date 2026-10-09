@@ -309,7 +309,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.disabled = true;
     saving.style.display = 'inline';
     try {
-      await api.post('/auth/change-password', { current_password, new_password, confirm_password });
+      const res = await api.post('/auth/change-password', { current_password, new_password, confirm_password });
+      if (res && res.token) localStorage.setItem(Auth.TOKEN_KEY, res.token);
       showAlert(alertEl, 'Password changed successfully.', 'success');
       document.getElementById('pw-form').reset();
       document.getElementById('pw-strength-bar').style.width = '0%';

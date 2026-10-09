@@ -20,6 +20,7 @@ class Staff(db.Model):
     role = db.Column(db.Enum(StaffRole), nullable=False, default=StaffRole.AGENT)
     must_change_password = db.Column(db.Boolean, default=True)
     is_active = db.Column(db.Boolean, default=True)
+    token_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     created_by = db.Column(db.String(36), db.ForeignKey('staff.id'), nullable=True)
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

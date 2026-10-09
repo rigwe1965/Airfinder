@@ -90,6 +90,8 @@ def update_staff(staff_id):
             return jsonify({'error': 'Invalid role'}), 400
         if not can_manage(actor_role, new_role):
             return jsonify({'error': 'Cannot assign role equal to or above your own'}), 403
+        if new_role != staff.role:
+            staff.token_version = (staff.token_version or 0) + 1
         staff.role = new_role
 
     if 'email' in data:
@@ -98,12 +100,18 @@ def update_staff(staff_id):
             if Staff.query.filter_by(email=new_email).first():
                 return jsonify({'error': 'Email already in use'}), 409
             staff.email = new_email
+            staff.token_version = (staff.token_version or 0) + 1
     if 'first_name' in data:
         staff.first_name = data['first_name']
     if 'last_name' in data:
         staff.last_name = data['last_name']
     if 'is_active' in data:
-        staff.is_active = bool(data['is_active'])
+        new_active = bool(data['is_active'])
+        if not new_active and staff.id == g.user_id:
+            return jsonify({'error': 'Cannot deactivate your own account'}), 400
+        if new_active != staff.is_active:
+            staff.token_version = (staff.token_version or 0) + 1
+        staff.is_active = new_active
 
     db.session.commit()
     return jsonify(staff.to_dict())
@@ -121,6 +129,7 @@ def reset_staff_password(staff_id):
     hashed = bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt())
     staff.password_hash = hashed.decode('utf-8')
     staff.must_change_password = True
+    staff.token_version = (staff.token_version or 0) + 1
     db.session.commit()
 
     send_staff_credentials_email(staff.email, staff.first_name, staff.role.value, temp_password)

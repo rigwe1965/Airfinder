@@ -85,3 +85,78 @@ def test_security_headers(client):
     r = client.get('/api/flights/airports')
     assert r.headers['X-Content-Type-Options'] == 'nosniff'
     assert r.headers['X-Frame-Options'] == 'DENY'
+
+
+# ---- token revocation -------------------------------------------------------
+def _staff_token(client, app, email='admin@x.com', password='Str0ngPass!1', role='admin'):
+    import bcrypt
+    from backend.models.staff import StaffRole
+    with app.app_context():
+        s = Staff(email=email, password_hash=bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode(),
+                  first_name='T', last_name='S', role=StaffRole(role), must_change_password=False)
+        db.session.add(s)
+        db.session.commit()
+        sid = s.id
+    r = client.post('/api/staff/auth/login', json={'email': email, 'password': password})
+    return sid, r.get_json()['token']
+
+
+def test_deactivated_staff_token_stops_working(client, app):
+    sid, tok = _staff_token(client, app)
+    h = {'Authorization': f'Bearer {tok}'}
+    assert client.get('/api/admin/dashboard', headers=h).status_code == 200
+    with app.app_context():
+        s = db.session.get(Staff, sid); s.is_active = False; db.session.commit()
+    assert client.get('/api/admin/dashboard', headers=h).status_code == 401
+
+
+def test_deleted_staff_token_stops_working(client, app):
+    sid, tok = _staff_token(client, app)
+    with app.app_context():
+        db.session.delete(db.session.get(Staff, sid)); db.session.commit()
+    assert client.get('/api/admin/dashboard', headers={'Authorization': f'Bearer {tok}'}).status_code == 401
+
+
+def test_role_comes_from_db_not_token(client, app):
+    from backend.models.staff import StaffRole
+    sid, tok = _staff_token(client, app, role='admin')
+    with app.app_context():
+        s = db.session.get(Staff, sid); s.role = StaffRole.FINANCE; db.session.commit()
+    # token still says admin, DB says finance -> rejected
+    assert client.get('/api/admin/dashboard', headers={'Authorization': f'Bearer {tok}'}).status_code == 401
+
+
+def test_admin_password_reset_revokes_old_token(client, app):
+    _, admin_tok = _staff_token(client, app, email='boss@x.com', role='super_admin')
+    sid, victim_tok = _staff_token(client, app, email='victim@x.com', role='agent')
+    r = client.post(f'/api/admin/staff/{sid}/reset-password', headers={'Authorization': f'Bearer {admin_tok}'})
+    assert r.status_code == 200
+    assert client.get('/api/admin/dashboard', headers={'Authorization': f'Bearer {victim_tok}'}).status_code == 401
+
+
+def test_customer_password_change_revokes_old_token(client):
+    _, tok = _customer_token(client, email='rev@example.com')
+    h = {'Authorization': f'Bearer {tok}'}
+    r = client.post('/api/auth/change-password', headers=h, json={
+        'current_password': 'Passw0rd!', 'new_password': 'N3wPassw0rd!', 'confirm_password': 'N3wPassw0rd!'})
+    assert r.status_code == 200
+    assert client.get('/api/auth/me', headers=h).status_code == 401
+    new_h = {'Authorization': f"Bearer {r.get_json()['token']}"}
+    assert client.get('/api/auth/me', headers=new_h).status_code == 200
+
+
+def test_temp_password_token_cannot_use_customer_endpoints(client, app):
+    import bcrypt
+    from backend.models.staff import StaffRole
+    with app.app_context():
+        db.session.add(Staff(email='tmp@x.com', password_hash=bcrypt.hashpw(b'TempPass123', bcrypt.gensalt()).decode(),
+                             first_name='T', last_name='S', role=StaffRole.AGENT, must_change_password=True))
+        db.session.commit()
+    tok = client.post('/api/staff/auth/login', json={'email': 'tmp@x.com', 'password': 'TempPass123'}).get_json()['token']
+    assert client.get('/api/bookings', headers={'Authorization': f'Bearer {tok}'}).status_code == 403
+
+
+def test_cannot_deactivate_self(client, app):
+    sid, tok = _staff_token(client, app, email='self@x.com', role='super_admin')
+    r = client.put(f'/api/admin/staff/{sid}', json={'is_active': False}, headers={'Authorization': f'Bearer {tok}'})
+    assert r.status_code == 400

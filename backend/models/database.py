@@ -14,21 +14,29 @@ def init_db(app):
 def _migrate_existing(app):
     """Add columns introduced after initial schema without dropping data."""
     inspector = sa_inspect(db.engine)
-    if 'bookings' not in inspector.get_table_names():
-        return
-    existing = {c['name'] for c in inspector.get_columns('bookings')}
+    tables = set(inspector.get_table_names())
     additions = []
-    if 'group_reference' not in existing:
-        additions.append('ALTER TABLE bookings ADD COLUMN group_reference VARCHAR(20)')
-    if 'is_multicity' not in existing:
-        additions.append('ALTER TABLE bookings ADD COLUMN is_multicity BOOLEAN DEFAULT 0')
-    # staff reset token columns
-    if 'staff' in inspector.get_table_names():
-        staff_cols = {c['name'] for c in inspector.get_columns('staff')}
-        if 'reset_token' not in staff_cols:
+
+    def cols(table):
+        return {c['name'] for c in inspector.get_columns(table)} if table in tables else None
+
+    bookings = cols('bookings')
+    if bookings is not None:
+        if 'group_reference' not in bookings:
+            additions.append('ALTER TABLE bookings ADD COLUMN group_reference VARCHAR(20)')
+        if 'is_multicity' not in bookings:
+            additions.append('ALTER TABLE bookings ADD COLUMN is_multicity BOOLEAN DEFAULT 0')
+    staff = cols('staff')
+    if staff is not None:
+        if 'reset_token' not in staff:
             additions.append('ALTER TABLE staff ADD COLUMN reset_token VARCHAR(64)')
-        if 'reset_token_expires' not in staff_cols:
+        if 'reset_token_expires' not in staff:
             additions.append('ALTER TABLE staff ADD COLUMN reset_token_expires DATETIME')
+        if 'token_version' not in staff:
+            additions.append('ALTER TABLE staff ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0')
+    users = cols('users')
+    if users is not None and 'token_version' not in users:
+        additions.append('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0')
     if additions:
         with db.engine.connect() as conn:
             for stmt in additions:
