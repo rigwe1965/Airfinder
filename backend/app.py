@@ -5,6 +5,22 @@ from backend.config import Config
 from backend.models.database import init_db
 from backend.extensions import limiter, mail
 
+# No inline scripts or handlers are allowed (see frontend/js/csp-actions.js). Styles keep
+# 'unsafe-inline' because pages use style="" attributes; Google Fonts is the only third party.
+CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
 def create_app():
     _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     app = Flask(__name__,
@@ -77,6 +93,7 @@ def create_app():
         resp.headers['X-Content-Type-Options'] = 'nosniff'
         resp.headers['X-Frame-Options'] = 'DENY'
         resp.headers['Referrer-Policy'] = 'same-origin'
+        resp.headers['Content-Security-Policy'] = CSP
         if not Config.IS_DEV:
             resp.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         return resp

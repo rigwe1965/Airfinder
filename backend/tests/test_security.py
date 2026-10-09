@@ -210,3 +210,29 @@ def test_finance_never_sees_passport(client, app):
         assert 'P1234567' not in body
     r = client.post(f'/api/bookings/{bid}/cancel', headers=fh)
     assert r.status_code == 200 and 'P1234567' not in r.get_data(as_text=True)
+
+
+# ---- CSP ---------------------------------------------------------------------
+def test_csp_header_blocks_inline_script(client):
+    csp = client.get('/').headers['Content-Security-Policy']
+    script_src = [d for d in csp.split(';') if d.strip().startswith('script-src')][0]
+    assert "'unsafe-inline'" not in script_src and "'unsafe-eval'" not in script_src
+    assert "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
+
+
+def test_frontend_has_no_inline_scripts_or_handlers():
+    """Regression guard: anything inline would be blocked by the CSP (and is an XSS foothold)."""
+    import pathlib, re
+    root = pathlib.Path(__file__).resolve().parents[2] / 'frontend'
+    bad = []
+    for f in list(root.rglob('*.html')) + list(root.rglob('*.js')):
+        text = f.read_text(encoding='utf-8')
+        if f.suffix == '.html':
+            for m in re.finditer(r'<script\b([^>]*)>', text):
+                if 'src=' not in m.group(1):
+                    bad.append(f'{f.relative_to(root)}: inline <script>')
+        if re.search(r'\son(click|change|submit|input|focus|blur|load|error|keyup|keydown|mouse\w+)\s*=', text):
+            bad.append(f'{f.relative_to(root)}: inline event handler')
+        if re.search(r'(href|src)\s*=\s*["\']\s*javascript:', text, re.I):
+            bad.append(f'{f.relative_to(root)}: javascript: URL')
+    assert not bad, bad

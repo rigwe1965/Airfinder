@@ -79,7 +79,7 @@ const Search = {
     `;
 
     const otaOptions = flight.ota_options.map((ota, i) => `
-      <div class="ota-option ${i === 0 ? 'best' : ''}" onclick="selectOTA('${flight.id}', '${ota.ota_id}', ${ota.price})">
+      <div class="ota-option ${i === 0 ? 'best' : ''}" ${Actions.attr('selectOTA', [flight.id, ota.ota_id, ota.price])}>
         <span class="ota-name">${ota.ota_name}</span>
         <span class="${ota.verified ? 'ota-verified' : 'ota-unverified'}">${ota.verified ? '✓' : '⚠'}</span>
         <div class="trust-score ${this.trustColor(ota.trust_score)}">★${ota.trust_score}</div>
@@ -130,8 +130,8 @@ const Search = {
             <div style="margin-top:6px;">${co2Badge}</div>
           </div>
           <div class="flight-card-actions">
-            <button class="btn btn-primary" onclick="bookFlight('${flight.id}')">Book Now</button>
-            <button class="price-hold-btn" onclick="holdPrice('${flight.id}', ${p.total})"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Hold Price 24h</button>
+            <button class="btn btn-primary" ${Actions.attr('bookFlight', [flight.id])}>Book Now</button>
+            <button class="price-hold-btn" ${Actions.attr('holdPrice', [flight.id, p.total])}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Hold Price 24h</button>
           </div>
         </div>
         <div class="ota-options">
@@ -146,7 +146,7 @@ const Search = {
     const dur = route.duration_hours ? `${Math.floor(route.duration_hours)}h ${Math.round((route.duration_hours % 1) * 60)}m` : '';
     const stopsLabel = route.stops_label || (route.stops === 0 ? 'Nonstop' : `${route.stops} stop`);
     return `
-      <div class="route-card" onclick="quickSearch('${route.origin}','${route.destination}')">
+      <div class="route-card" ${Actions.attr('quickSearch', [route.origin, route.destination])}>
         <div class="route-from">${route.origin} → ${route.destination}</div>
         <div class="route-to">${route.label}</div>
         <div class="route-airline">${route.airline}</div>
@@ -196,3 +196,5 @@ function quickSearch(origin, destination) {
   const date = today.toISOString().split('T')[0];
   window.location.href = `/results.html?origin=${origin}&destination=${destination}&departure_date=${date}&passengers=1&cabin=economy`;
 }
+
+Actions.register({ bookFlight, holdPrice, quickSearch, selectOTA });

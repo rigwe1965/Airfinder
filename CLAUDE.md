@@ -89,3 +89,13 @@ attributes + hidden CSS class handled by auth.js.
 
 ## Currency
 All prices display in EUR (locale.js handles USD→EUR conversion client-side).
+
+## Frontend Security Conventions (CSP)
+The server sends `script-src 'self'` — **no inline `<script>` blocks, no `onclick=`/`onchange=`/`onsubmit=`
+attributes, no `javascript:` URLs** (a test fails if any appear).
+- Page logic lives in `/js/pages/<page>.js`; every page loads `/js/csp-actions.js` first.
+- Wire events with `data-click="fn" data-args='["a",1]'` (also `data-change`, `data-submit`).
+  In JS templates use `${Actions.attr('fn', [id, value])}`. Arg tokens: `'$el'`, `'$event'`, `'$value'`.
+- A function is callable from markup only if registered: `Actions.register({ fn })` at the end of its script.
+- Built-ins: `unhide(id)`, `hide(id)`, `closeOnBackdrop`, `navigate(path)`, `goBack`.
+- Always wrap user-derived values in `escapeHtml()` before putting them in `innerHTML`.

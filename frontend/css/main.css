@@ -360,3 +360,6 @@ h4 { font-size: 1rem; font-weight: 600; letter-spacing: -.1px; }
   .container { padding: 0 14px; }
   .btn-lg { padding: 12px 22px; font-size: 15px; }
 }
+
+/* demo modal focus ring (was an inline onfocus handler) */
+#demo-modal input:focus, #demo-modal textarea:focus { border-color: #407E3C !important; }

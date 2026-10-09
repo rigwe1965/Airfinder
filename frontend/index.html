@@ -150,7 +150,7 @@
   <div class="container">
     <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
       <h2 style="margin:0;">✈ Popular Routes</h2>
-      <button id="refreshRoutesBtn" onclick="loadFeaturedRoutes(true)" style="font-size:12px;padding:4px 12px;border:1px solid #407E3C;color:#407E3C;background:transparent;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;">
+      <button id="refreshRoutesBtn" data-click="loadFeaturedRoutes" data-args='[true]' style="font-size:12px;padding:4px 12px;border:1px solid #407E3C;color:#407E3C;background:transparent;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
       </button>
@@ -202,7 +202,7 @@
     </div>
     <div style="text-align:center;margin-top:36px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <a href="/admin/login.html" class="btn btn-primary btn-lg">View Staff Portal</a>
-      <button class="btn btn-secondary btn-lg" onclick="document.getElementById('demo-modal').classList.remove('hidden')">Request a Demo Call</button>
+      <button class="btn btn-secondary btn-lg" data-click="unhide" data-args='["demo-modal"]'>Request a Demo Call</button>
     </div>
   </div>
 </section>
@@ -333,34 +333,34 @@
 </footer>
 
 <!-- DEMO REQUEST MODAL -->
-<div id="demo-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.classList.add('hidden')">
+<div id="demo-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" data-click="closeOnBackdrop" data-args='["$el","$event"]'>
   <div style="background:#fff;border-radius:16px;padding:36px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative;">
-    <button onclick="document.getElementById('demo-modal').classList.add('hidden')" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:#9ca3af;">✕</button>
+    <button data-click="hide" data-args='["demo-modal"]' style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:#9ca3af;">✕</button>
     <h3 style="margin-bottom:6px;">Request a Demo Call</h3>
     <p class="text-sm text-gray" style="margin-bottom:24px;">Tell us about your team and we'll schedule a walkthrough tailored to your needs.</p>
     <div id="demo-form-wrap">
-      <form id="demo-form" onsubmit="submitDemoRequest(event)">
+      <form id="demo-form" data-submit="submitDemoRequest" data-args='["$event"]'>
         <div class="demo-form-grid">
           <div>
             <label style="font-size:12px;font-weight:600;color:#4b5563;display:block;margin-bottom:4px;">Full Name *</label>
-            <input required type="text" id="demo-name" placeholder="Emeka Okafor" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" onfocus="this.style.borderColor='#407E3C'" onblur="this.style.borderColor='#e5e7eb'">
+            <input required type="text" id="demo-name" placeholder="Emeka Okafor" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;">
           </div>
           <div>
             <label style="font-size:12px;font-weight:600;color:#4b5563;display:block;margin-bottom:4px;">Company *</label>
-            <input required type="text" id="demo-company" placeholder="Zenith Bank PLC" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" onfocus="this.style.borderColor='#407E3C'" onblur="this.style.borderColor='#e5e7eb'">
+            <input required type="text" id="demo-company" placeholder="Zenith Bank PLC" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;">
           </div>
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:12px;font-weight:600;color:#4b5563;display:block;margin-bottom:4px;">Work Email *</label>
-          <input required type="email" id="demo-email" placeholder="emeka@yourcompany.com" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" onfocus="this.style.borderColor='#407E3C'" onblur="this.style.borderColor='#e5e7eb'">
+          <input required type="email" id="demo-email" placeholder="emeka@yourcompany.com" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;">
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:12px;font-weight:600;color:#4b5563;display:block;margin-bottom:4px;">Phone / WhatsApp</label>
-          <input type="tel" id="demo-phone" placeholder="+234 801 234 5678" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" onfocus="this.style.borderColor='#407E3C'" onblur="this.style.borderColor='#e5e7eb'">
+          <input type="tel" id="demo-phone" placeholder="+234 801 234 5678" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;">
         </div>
         <div style="margin-bottom:20px;">
           <label style="font-size:12px;font-weight:600;color:#4b5563;display:block;margin-bottom:4px;">What are you looking to solve?</label>
-          <textarea id="demo-message" rows="3" placeholder="e.g. We manage travel for 200 staff and need better oversight and cost control..." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;resize:vertical;" onfocus="this.style.borderColor='#407E3C'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+          <textarea id="demo-message" rows="3" placeholder="e.g. We manage travel for 200 staff and need better oversight and cost control..." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;resize:vertical;"></textarea>
         </div>
         <button type="submit" class="btn btn-primary btn-full" id="demo-submit-btn">Send Request</button>
       </form>
@@ -368,222 +368,11 @@
   </div>
 </div>
 
+<script src="/js/csp-actions.js"></script>
 <script src="/js/locale.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/search.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  // Set default date (2 weeks from now)
-  const d = new Date(); d.setDate(d.getDate() + 14);
-  document.getElementById('departure_date').value = d.toISOString().split('T')[0];
-  document.getElementById('departure_date').min = new Date().toISOString().split('T')[0];
-
-  // Load airports datalist
-  try {
-    const airports = await Search.loadAirports();
-    const dl = document.getElementById('airports-list');
-    airports.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = `${a.city} (${a.code})`;
-      dl.appendChild(opt);
-    });
-  } catch {}
-
-  // Load featured routes
-  loadFeaturedRoutes(false);
-
-  // Tabs
-  document.querySelectorAll('.search-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.search-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const t = tab.dataset.tab;
-      document.getElementById('return-date-row').classList.toggle('hidden', t !== 'roundtrip');
-      document.getElementById('panel-simple').classList.toggle('hidden', t === 'multicity');
-      document.getElementById('panel-multicity').classList.toggle('hidden', t !== 'multicity');
-    });
-  });
-
-  // Multi-city leg builder
-  initMultiCity();
-
-  // Manual search
-  document.getElementById('searchBtn').addEventListener('click', doSearch);
-
-  // AI search
-  document.getElementById('aiSearchBtn').addEventListener('click', doAiSearch);
-  document.getElementById('aiInput').addEventListener('keydown', e => { if (e.key === 'Enter') doAiSearch(); });
-});
-
-async function loadFeaturedRoutes(forceRefresh) {
-  const grid = document.getElementById('featuredGrid');
-  const subtitle = document.getElementById('featuredSubtitle');
-  const btn = document.getElementById('refreshRoutesBtn');
-  grid.innerHTML = '<div class="spinner" style="margin:20px auto;"></div>';
-  if (btn) btn.disabled = true;
-  try {
-    const data = await Search.loadFeatured(forceRefresh);
-    const routes = data.routes || [];
-    if (!routes.length) throw new Error('empty');
-    grid.innerHTML = routes.map(r => Search.renderFeaturedRoute(r)).join('');
-    if (subtitle && data.fetched_at) {
-      subtitle.textContent = `Top picks for African travelers — prices as of ${data.fetched_at} · departing ${data.search_date}`;
-    }
-  } catch {
-    grid.innerHTML = '<p class="text-gray">Could not load featured routes.</p>';
-    if (subtitle) subtitle.textContent = 'Top picks for African travelers';
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
-function extractIATA(str) {
-  const m = str.match(/\(([A-Z]{3})\)/);
-  return m ? m[1] : str.toUpperCase().slice(0, 3);
-}
-
-function doSearch() {
-  const origin = extractIATA(document.getElementById('origin').value.trim());
-  const destination = extractIATA(document.getElementById('destination').value.trim());
-  const departure_date = document.getElementById('departure_date').value;
-  const pc = document.getElementById('passengers_cabin').value.split('|');
-  const return_date = document.getElementById('return_date').value;
-
-  if (!origin || !destination || !departure_date) {
-    alert('Please fill in From, To, and Date.');
-    return;
-  }
-
-  const params = new URLSearchParams({ origin, destination, departure_date, passengers: pc[0], cabin: pc[1] });
-  if (return_date) params.set('return_date', return_date);
-  window.location.href = `/results.html?${params}`;
-}
-
-// ===== MULTI-CITY =====
-let mcLegCount = 0;
-
-function initMultiCity() {
-  addMcLeg(); // start with 2 legs
-  addMcLeg();
-  document.getElementById('mc-add-leg-btn').addEventListener('click', () => {
-    if (mcLegCount < 6) addMcLeg();
-    else alert('Maximum 6 legs allowed.');
-  });
-  document.getElementById('mc-search-btn').addEventListener('click', doMultiCitySearch);
-}
-
-function addMcLeg() {
-  mcLegCount++;
-  const idx = mcLegCount;
-  const today = new Date();
-  today.setDate(today.getDate() + 14 + (idx - 1) * 3);
-  const defaultDate = today.toISOString().split('T')[0];
-  const min = new Date().toISOString().split('T')[0];
-
-  const div = document.createElement('div');
-  div.className = 'mc-leg';
-  div.dataset.leg = idx;
-  div.innerHTML = `
-    <div class="mc-leg-num" style="grid-column:1/-1;">Leg ${idx}</div>
-    <div class="search-field">
-      <div class="search-field-label">From</div>
-      <input class="form-control mc-origin" data-leg="${idx}" placeholder="City or IATA" list="airports-list">
-    </div>
-    <div class="mc-arrow">→</div>
-    <div class="search-field">
-      <div class="search-field-label">To</div>
-      <input class="form-control mc-dest" data-leg="${idx}" placeholder="City or IATA" list="airports-list">
-    </div>
-    <div class="search-field">
-      <div class="search-field-label">Date</div>
-      <input class="form-control mc-date" data-leg="${idx}" type="date" value="${defaultDate}" min="${min}">
-    </div>
-    ${idx > 2 ? `<button class="mc-remove" onclick="removeMcLeg(this)" title="Remove leg">✕</button>` : '<div></div>'}
-  `;
-  document.getElementById('mc-legs-container').appendChild(div);
-}
-
-function removeMcLeg(btn) {
-  btn.closest('.mc-leg').remove();
-  mcLegCount--;
-  // Re-number remaining legs
-  document.querySelectorAll('.mc-leg').forEach((el, i) => {
-    el.querySelector('.mc-leg-num').textContent = `Leg ${i + 1}`;
-    el.dataset.leg = i + 1;
-  });
-}
-
-function doMultiCitySearch() {
-  const legs = [];
-  let valid = true;
-  document.querySelectorAll('.mc-leg').forEach((legEl, i) => {
-    const origin = extractIATA(legEl.querySelector('.mc-origin').value.trim());
-    const destination = extractIATA(legEl.querySelector('.mc-dest').value.trim());
-    const date = legEl.querySelector('.mc-date').value;
-    if (!origin || !destination || !date) { valid = false; }
-    legs.push({ origin, destination, date });
-  });
-
-  if (!valid || legs.length < 2) {
-    alert('Please fill in From, To, and Date for all legs.');
-    return;
-  }
-
-  const pc = document.getElementById('mc-passengers-cabin').value.split('|');
-  sessionStorage.setItem('af_mc_legs', JSON.stringify(legs));
-  sessionStorage.setItem('af_mc_pax', JSON.stringify({ passengers: pc[0], cabin: pc[1] }));
-  window.location.href = '/multicity.html';
-}
-
-async function submitDemoRequest(e) {
-  e.preventDefault();
-  const btn = document.getElementById('demo-submit-btn');
-  btn.textContent = 'Sending...'; btn.disabled = true;
-  const payload = {
-    name: document.getElementById('demo-name').value,
-    company: document.getElementById('demo-company').value,
-    email: document.getElementById('demo-email').value,
-    phone: document.getElementById('demo-phone').value,
-    message: document.getElementById('demo-message').value,
-  };
-  try {
-    await api.post('/demo-request', payload);
-  } catch {}
-  document.getElementById('demo-form-wrap').innerHTML = `
-    <div style="text-align:center;padding:20px 0;">
-      <div style="width:56px;height:56px;background:#e8f5e4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#407E3C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <h4 style="color:#407E3C;margin-bottom:8px;">Request Received!</h4>
-      <p class="text-sm text-gray">Thanks, <strong>${escapeHtml(payload.name.split(' ')[0])}</strong>. We'll reach out to <strong>${escapeHtml(payload.email)}</strong> within 24 hours to schedule your demo.</p>
-    </div>`;
-}
-
-async function doAiSearch() {
-  const query = document.getElementById('aiInput').value.trim();
-  if (!query) return;
-  const btn = document.getElementById('aiSearchBtn');
-  btn.textContent = '...'; btn.disabled = true;
-  try {
-    const data = await Search.aiSearch(query);
-    if (data.parsed && data.parsed.origin && data.parsed.destination) {
-      const p = data.parsed;
-      const params = new URLSearchParams({
-        origin: p.origin, destination: p.destination,
-        departure_date: p.departure_date, passengers: p.passengers, cabin: p.cabin,
-        ai_query: query,
-      });
-      window.location.href = `/results.html?${params}`;
-    } else {
-      alert("Couldn't parse that query. Try: 'flight from Lagos to London next month'");
-    }
-  } catch (e) {
-    alert('Search failed. Please try again.');
-  } finally {
-    btn.textContent = 'Search'; btn.disabled = false;
-  }
-}
-</script>
+<script src="/js/pages/index.js"></script>
 </body>
 </html>
