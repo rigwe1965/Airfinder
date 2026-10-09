@@ -362,3 +362,16 @@ def test_proxy_fix_uses_real_client_ip():
     # only the last (trusted) hop counts: a client-prepended fake entry is ignored
     spoof = {'X-Forwarded-For': '6.6.6.6, 203.0.113.9'}
     assert make(1).get('/ip', headers=spoof, environ_overrides={'REMOTE_ADDR': '10.0.0.1'}).get_data(as_text=True) == '203.0.113.9'
+
+
+# ---- deployment: database URL handling ------------------------------------------
+@pytest.mark.parametrize('given,expected', [
+    ('postgres://u:p@host:5432/db', 'postgresql+psycopg2://u:p@host:5432/db'),
+    ('postgresql://u:p@host/db', 'postgresql+psycopg2://u:p@host/db'),
+    ('postgresql+psycopg2://u:p@host/db', 'postgresql+psycopg2://u:p@host/db'),
+    ('sqlite:///airfinder.db', 'sqlite:///airfinder.db'),
+])
+def test_database_uri_names_psycopg2_driver(monkeypatch, given, expected):
+    from backend.config import _database_uri
+    monkeypatch.setenv('DATABASE_URL', given)
+    assert _database_uri() == expected

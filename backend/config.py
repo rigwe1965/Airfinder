@@ -3,12 +3,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def _database_uri():
+    """Render hands out postgres:// URLs. Name the psycopg2 driver explicitly: SQLAlchemy 2.1+
+    defaults a bare postgresql:// URL to psycopg3, which this project does not install."""
+    uri = os.getenv('DATABASE_URL', 'sqlite:///airfinder.db')
+    for prefix in ('postgres://', 'postgresql://'):
+        if uri.startswith(prefix):
+            return 'postgresql+psycopg2://' + uri[len(prefix):]
+    return uri
+
+
 class Config:
     IS_DEV = os.getenv('FLASK_ENV') == 'development'
     SECRET_KEY = os.getenv('SECRET_KEY') or ('dev-secret-key' if IS_DEV else None)
     JWT_SECRET = os.getenv('JWT_SECRET') or ('dev-jwt-secret' if IS_DEV else None)
     PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL', 'http://localhost:5000').rstrip('/')
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///airfinder.db').replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
