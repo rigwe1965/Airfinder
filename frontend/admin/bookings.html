@@ -78,11 +78,11 @@ function renderBookings(bookings) {
   if (!bookings.length) { document.getElementById('bookings-tbody').innerHTML = '<tr><td colspan="8" class="text-gray" style="text-align:center;padding:20px;">No bookings found.</td></tr>'; return; }
   document.getElementById('bookings-tbody').innerHTML = bookings.map(b => `
     <tr>
-      <td class="td-mono">${b.reference}</td>
-      <td><div class="text-sm">${b.customer_name || 'Guest'}</div><div class="text-xs text-gray">${b.customer_email || ''}</div></td>
-      <td><strong>${b.origin} → ${b.destination}</strong></td>
-      <td>${b.departure_date}</td>
-      <td class="text-sm">${b.airline}</td>
+      <td class="td-mono">${escapeHtml(b.reference)}</td>
+      <td><div class="text-sm">${escapeHtml(b.customer_name || 'Guest')}</div><div class="text-xs text-gray">${escapeHtml(b.customer_email || '')}</div></td>
+      <td><strong>${escapeHtml(b.origin)} → ${escapeHtml(b.destination)}</strong></td>
+      <td>${escapeHtml(b.departure_date)}</td>
+      <td class="text-sm">${escapeHtml(b.airline)}</td>
       <td><strong>${Admin.formatCurrency(b.pricing.total)}</strong></td>
       <td>${Admin.statusBadge(b.status)}</td>
       <td>

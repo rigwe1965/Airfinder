@@ -303,8 +303,8 @@ function renderCard(b) {
 
   const paxHtml = (b.passengers || []).map(px => `
     <div class="pax-item">
-      <span class="pax-name">${px.first_name} ${px.last_name}</span>
-      ${px.passport ? `<span class="pax-passport">${px.passport}</span>` : ''}
+      <span class="pax-name">${escapeHtml(px.first_name)} ${escapeHtml(px.last_name)}</span>
+      ${px.passport ? `<span class="pax-passport">${escapeHtml(px.passport)}</span>` : ''}
     </div>`).join('') || '<div class="pax-item"><span class="pax-name">' + b.passenger_count + ' passenger(s)</span></div>';
 
   const cancelBtn = isUpcoming
@@ -335,9 +335,9 @@ function renderCard(b) {
       </div>
 
       <div class="booking-body">
-        <div class="booking-route-big">${b.origin} → ${b.destination}</div>
+        <div class="booking-route-big">${escapeHtml(b.origin)} → ${escapeHtml(b.destination)}</div>
         <div class="booking-flight-meta">
-          <span>✈ ${b.airline}${b.flight_number ? ' ' + b.flight_number : ''}</span>
+          <span>✈ ${escapeHtml(b.airline)}${b.flight_number ? ' ' + escapeHtml(b.flight_number) : ''}</span>
           <span>📅 ${formatDate(b.departure_date)}</span>
           <span>💺 ${capitalize(b.cabin_class)}</span>
           <span>👤 ${b.passenger_count} passenger${b.passenger_count !== 1 ? 's' : ''}</span>

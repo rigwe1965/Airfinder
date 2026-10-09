@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('booking-details').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
       <div>
-        <div style="font-size:1.2rem;font-weight:800;">${b.origin} → ${b.destination}</div>
-        <div class="text-gray text-sm">${b.airline} · ${b.flight_number || ''} · ${b.departure_date}</div>
+        <div style="font-size:1.2rem;font-weight:800;">${escapeHtml(b.origin)} → ${escapeHtml(b.destination)}</div>
+        <div class="text-gray text-sm">${escapeHtml(b.airline)} · ${escapeHtml(b.flight_number || '')} · ${escapeHtml(b.departure_date)}</div>
         ${bookedAt ? `<div class="text-gray text-sm">Booked ${bookedAt}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -85,12 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="price-line">
       <span>Reference</span>
       <span style="display:flex;align-items:center;gap:8px;">
-        <span class="td-mono">${b.reference}</span>
-        <button id="copy-ref-btn" onclick="copyRef('${b.reference}')" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;color:#374151;">Copy</button>
+        <span class="td-mono">${escapeHtml(b.reference)}</span>
+        <button id="copy-ref-btn" onclick="copyRef('${escapeHtml(b.reference)}')" style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;color:#374151;">Copy</button>
       </span>
     </div>
-    ${isMc ? `<div class="price-line"><span>Group Reference</span><span class="td-mono">${b.group_reference}</span></div>` : ''}
-    <div class="price-line"><span>Cabin</span><span>${b.cabin_class}</span></div>
+    ${isMc ? `<div class="price-line"><span>Group Reference</span><span class="td-mono">${escapeHtml(b.group_reference)}</span></div>` : ''}
+    <div class="price-line"><span>Cabin</span><span>${escapeHtml(b.cabin_class)}</span></div>
     <div class="price-line"><span>Passengers</span><span>${b.passenger_count}</span></div>
     ${baggageLabel ? `<div class="price-line"><span>Baggage</span><span>${baggageLabel}</span></div>` : ''}
     ${seatLabel ? `<div class="price-line"><span>Seat</span><span>${seatLabel}</span></div>` : ''}

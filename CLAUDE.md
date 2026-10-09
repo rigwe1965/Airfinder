@@ -12,7 +12,7 @@ python backend/app.py
 ```
 
 ## Default Credentials
-- Super Admin: admin@airfinder.com / Admin@2024!
+- Super Admin: set via SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD env vars (required; app refuses to start without them; must change password on first login). See .env.example
 - Staff accounts: created by admin, emailed temp password, must change on first login
 
 ## Key APIs

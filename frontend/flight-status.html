@@ -299,7 +299,7 @@ async function lookupFlight() {
   document.getElementById('statusResult').innerHTML = `
     <div style="text-align:center;padding:60px 0;">
       <div class="spinner"></div>
-      <p class="text-gray mt-2">Looking up ${fn}...</p>
+      <p class="text-gray mt-2">Looking up ${escapeHtml(fn)}...</p>
     </div>`;
 
   try {
@@ -309,7 +309,7 @@ async function lookupFlight() {
     document.getElementById('statusResult').innerHTML = `
       <div class="alert alert-error">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        ${e.message || 'Could not retrieve flight status. Please try again.'}
+        ${escapeHtml(e.message || 'Could not retrieve flight status. Please try again.')}
       </div>`;
     document.getElementById('examplesBlock').style.display = '';
   }
@@ -355,12 +355,12 @@ function renderStatus(f) {
     <div class="flight-header-card">
       <div class="flight-header-top">
         <div>
-          <div class="flight-num">${f.flight_number}</div>
-          <div class="airline-info">${f.airline} · ${f.aircraft}</div>
+          <div class="flight-num">${escapeHtml(f.flight_number)}</div>
+          <div class="airline-info">${escapeHtml(f.airline)} · ${escapeHtml(f.aircraft)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;">
           <span class="status-pill ${statusClass}">${statusIcon} ${f.status_label}</span>
-          <div style="text-align:right;color:rgba(255,255,255,.7);font-size:12px;">${f.date}</div>
+          <div style="text-align:right;color:rgba(255,255,255,.7);font-size:12px;">${escapeHtml(f.date)}</div>
         </div>
       </div>
 

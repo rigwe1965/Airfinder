@@ -178,8 +178,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="next-trip-card">
           <div>
             <div class="next-trip-label">✈ Your Next Trip</div>
-            <div class="next-trip-route">${nextTrip.origin} → ${nextTrip.destination}</div>
-            <div class="next-trip-meta">${nextTrip.airline}${nextTrip.flight_number ? ' · ' + nextTrip.flight_number : ''} · ${nextTrip.cabin_class}</div>
+            <div class="next-trip-route">${escapeHtml(nextTrip.origin)} → ${escapeHtml(nextTrip.destination)}</div>
+            <div class="next-trip-meta">${escapeHtml(nextTrip.airline)}${nextTrip.flight_number ? ' · ' + escapeHtml(nextTrip.flight_number) : ''} · ${escapeHtml(nextTrip.cabin_class)}</div>
             <div class="next-trip-meta">${formatDate(nextTrip.departure_date)}</div>
             <div class="next-trip-ref">${nextTrip.reference}</div>
           </div>
@@ -201,10 +201,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       document.getElementById('recent-bookings').innerHTML = recent.map(b => `
         <div class="recent-booking-card">
-          <div class="rbc-route">${b.origin} → ${b.destination}</div>
+          <div class="rbc-route">${escapeHtml(b.origin)} → ${escapeHtml(b.destination)}</div>
           <div class="rbc-meta">
-            <div class="rbc-airline">${b.airline}${b.flight_number ? ' · ' + b.flight_number : ''}</div>
-            <div class="rbc-date">${formatDate(b.departure_date)} · ${b.cabin_class} · ${b.passenger_count} pax</div>
+            <div class="rbc-airline">${escapeHtml(b.airline)}${b.flight_number ? ' · ' + escapeHtml(b.flight_number) : ''}</div>
+            <div class="rbc-date">${formatDate(b.departure_date)} · ${escapeHtml(b.cabin_class)} · ${b.passenger_count} pax</div>
           </div>
           <div class="rbc-right">
             <span class="badge ${statusBadge(b.status)}">${b.status}</span>

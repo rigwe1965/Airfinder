@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const isCheap = g.is_cheapest;
           const price = g.price != null ? fmtCurrency(g.price) : '—';
           const bg = isCheap ? 'background:var(--green);color:#fff;' : isTarget ? 'background:#f0fdf4;border:2px solid var(--green);' : 'background:#f9fafb;border:1px solid #e5e7eb;';
-          return `<div onclick="window.location.href='/results.html?origin=${origin}&destination=${destination}&departure_date=${g.date}&passengers=${passengers}&cabin=${cabin}'"
+          return `<div onclick="window.location.href='/results.html?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&departure_date=${encodeURIComponent(g.date)}&passengers=${encodeURIComponent(passengers)}&cabin=${encodeURIComponent(cabin)}'"
             style="cursor:pointer;border-radius:10px;padding:10px 14px;text-align:center;min-width:80px;${bg}">
             <div style="font-size:11px;font-weight:600;opacity:.7;">${g.day}</div>
             <div style="font-size:12px;">${g.date.slice(5)}</div>

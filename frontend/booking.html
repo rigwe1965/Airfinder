@@ -236,8 +236,8 @@ function renderFlightSummary() {
   document.getElementById('flight-summary').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:1.2rem;font-weight:800;">${flight.origin} → ${flight.destination}</div>
-        <div class="text-gray text-sm">${flight.airline} · ${flight.flight_number} · ${flight.departure_date}</div>
+        <div style="font-size:1.2rem;font-weight:800;">${escapeHtml(flight.origin)} → ${escapeHtml(flight.destination)}</div>
+        <div class="text-gray text-sm">${escapeHtml(flight.airline)} · ${escapeHtml(flight.flight_number)} · ${escapeHtml(flight.departure_date)}</div>
         <div class="text-gray text-sm">${flight.departure_time} → ${flight.arrival_time} · ${flight.cabin}</div>
         ${flight.is_africa_route ? '<span class="badge badge-green mt-1">✈ Direct</span>' : ''}
       </div>
@@ -404,8 +404,8 @@ function renderMcFlightSummary() {
     ${legs.map((leg, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;${i < legs.length - 1 ? 'border-bottom:1px solid var(--gray-100);' : ''}">
         <div>
-          <div style="font-weight:700;">Leg ${i+1}: ${leg.origin} → ${leg.destination}</div>
-          <div class="text-gray text-sm">${leg.airline} · ${leg.flight_number} · ${leg.date}</div>
+          <div style="font-weight:700;">Leg ${i+1}: ${escapeHtml(leg.origin)} → ${escapeHtml(leg.destination)}</div>
+          <div class="text-gray text-sm">${escapeHtml(leg.airline)} · ${escapeHtml(leg.flight_number)} · ${escapeHtml(leg.date)}</div>
           <div class="text-gray text-sm">${leg.departure_time} → ${leg.arrival_time} · ${leg.cabin}</div>
         </div>
         <div style="font-weight:700;color:var(--green);">${fmtCurrency(leg.pricing.total)}</div>
