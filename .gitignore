@@ -18,3 +18,4 @@ node_modules/
 .pytest_cache/
 .claude/ss_*.png
 .claude/verify_staff.py
+.deps_installed
