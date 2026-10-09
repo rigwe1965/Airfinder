@@ -14,7 +14,9 @@ command -v python >/dev/null 2>&1 || PY=python3
 STAMP=.deps_installed
 if [ ! -f "$STAMP" ] || [ requirements.txt -nt "$STAMP" ]; then
   echo "Installing dependencies..."
-  "$PY" -m pip install -q -r requirements.txt && touch "$STAMP" || exit 1
+  # psycopg2 is only needed for Postgres on Render; local dev uses SQLite
+  grep -vi '^psycopg2' requirements.txt > .requirements.local.txt
+  "$PY" -m pip install -q -r .requirements.local.txt && touch "$STAMP" || exit 1
 fi
 
 PORT=$(grep -E '^PORT=' .env | cut -d= -f2 | tr -d '\r')

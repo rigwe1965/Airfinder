@@ -19,3 +19,4 @@ node_modules/
 .claude/ss_*.png
 .claude/verify_staff.py
 .deps_installed
+.requirements.local.txt
