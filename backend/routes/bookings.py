@@ -188,9 +188,10 @@ def my_bookings():
     role = g.role
     if role == 'customer':
         bookings = Booking.query.filter_by(user_id=g.user_id).order_by(Booking.created_at.desc()).all()
-    else:
-        bookings = Booking.query.order_by(Booking.created_at.desc()).all()
-    return jsonify([b.to_dict() for b in bookings])
+        return jsonify([b.to_dict() for b in bookings])
+    # Staff listing: capped, names only (passport data is not needed to list bookings)
+    bookings = Booking.query.order_by(Booking.created_at.desc()).limit(200).all()
+    return jsonify([b.to_dict(passenger_detail=False) for b in bookings])
 
 @bp.route('/<booking_id>', methods=['GET'])
 @jwt_required
@@ -198,7 +199,8 @@ def get_booking(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     if g.role == 'customer' and booking.user_id != g.user_id:
         return jsonify({'error': 'Access denied'}), 403
-    return jsonify(booking.to_dict())
+    detail = g.role in ('customer', 'super_admin', 'admin', 'agent')
+    return jsonify(booking.to_dict(passenger_detail=detail))
 
 @bp.route('/<booking_id>/cancel', methods=['POST'])
 @jwt_required
@@ -212,4 +214,4 @@ def cancel_booking(booking_id):
 
     booking.status = BookingStatus.CANCELLED
     db.session.commit()
-    return jsonify({'message': 'Booking cancelled', 'booking': booking.to_dict()})
+    return jsonify({'message': 'Booking cancelled', 'booking': booking.to_dict(passenger_detail=g.role != 'finance')})

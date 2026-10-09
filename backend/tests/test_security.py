@@ -160,3 +160,53 @@ def test_cannot_deactivate_self(client, app):
     sid, tok = _staff_token(client, app, email='self@x.com', role='super_admin')
     r = client.put(f'/api/admin/staff/{sid}', json={'is_active': False}, headers={'Authorization': f'Bearer {tok}'})
     assert r.status_code == 400
+
+
+# ---- email escaping / passport trimming -------------------------------------
+def test_emails_escape_user_data(app, monkeypatch):
+    from backend.services import email_service
+    captured = []
+    monkeypatch.setattr(email_service, 'send_email', lambda to, subj, body: captured.append(body))
+    payload = '<script>alert(1)</script>'
+    booking = {'reference': 'AF1', 'origin': 'LOS', 'destination': 'LHR', 'departure_date': '2026-12-01',
+               'airline': payload, 'flight_number': payload, 'cabin_class': 'economy',
+               'passengers': [{'first_name': payload, 'last_name': '"><img src=x onerror=1>'}],
+               'pricing': {'total': 10}}
+    with app.test_request_context():
+        email_service.send_booking_confirmation_email('a@b.co', payload, booking)
+        email_service.send_multicity_confirmation_email('a@b.co', payload, [booking], payload, 10)
+        email_service.send_welcome_email('a@b.co', payload)
+        email_service.send_password_reset_email('a@b.co', payload, 'http://x/"><script>1</script>')
+        email_service.send_staff_credentials_email('a@b.co', payload, 'admin', payload)
+    assert len(captured) == 5
+    for body in captured:
+        assert '<script>' not in body and '<img' not in body
+
+
+def _booked_with_passport(client):
+    _, tok = _customer_token(client, email='pp@example.com')
+    h = {'Authorization': f'Bearer {tok}'}
+    b = client.post('/api/bookings', headers=h, json={
+        **BOOKING, 'passengers': [{'first_name': 'A', 'last_name': 'B', 'passport': 'P1234567'}]}).get_json()['booking']
+    return h, b['id']
+
+
+def test_owner_sees_passport_staff_lists_do_not(client, app):
+    h, bid = _booked_with_passport(client)
+    assert 'P1234567' in client.get(f'/api/bookings/{bid}', headers=h).get_data(as_text=True)
+    _, admin_tok = _staff_token(client, app, email='a1@x.com', role='admin')
+    ah = {'Authorization': f'Bearer {admin_tok}'}
+    for url in ('/api/bookings', '/api/admin/bookings'):
+        assert 'P1234567' not in client.get(url, headers=ah).get_data(as_text=True)
+    assert 'P1234567' in client.get(f'/api/bookings/{bid}', headers=ah).get_data(as_text=True)
+
+
+def test_finance_never_sees_passport(client, app):
+    h, bid = _booked_with_passport(client)
+    _, fin_tok = _staff_token(client, app, email='fin@x.com', role='finance')
+    fh = {'Authorization': f'Bearer {fin_tok}'}
+    for url in ('/api/bookings', '/api/admin/bookings', f'/api/bookings/{bid}'):
+        body = client.get(url, headers=fh).get_data(as_text=True)
+        assert 'P1234567' not in body
+    r = client.post(f'/api/bookings/{bid}/cancel', headers=fh)
+    assert r.status_code == 200 and 'P1234567' not in r.get_data(as_text=True)

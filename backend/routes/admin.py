@@ -89,7 +89,7 @@ def all_bookings():
     paginated = query.order_by(Booking.created_at.desc()).paginate(page=page, per_page=per_page)
     bookings = []
     for b in paginated.items:
-        d = b.to_dict()
+        d = b.to_dict(passenger_detail=False)
         user = User.query.get(b.user_id)
         d['customer_name'] = f"{user.first_name} {user.last_name}" if user else "Guest"
         d['customer_email'] = user.email if user else "—"
@@ -117,7 +117,7 @@ def update_booking(booking_id):
         booking.notes = data['notes']
 
     db.session.commit()
-    return jsonify(booking.to_dict())
+    return jsonify(booking.to_dict(passenger_detail=False))
 
 @bp.route('/finance/summary', methods=['GET'])
 @require_role('super_admin', 'admin', 'finance')

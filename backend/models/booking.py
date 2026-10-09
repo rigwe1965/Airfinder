@@ -46,8 +46,15 @@ class Booking(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def to_dict(self):
+    def to_dict(self, passenger_detail=True):
+        """passenger_detail=False returns names only (no passport/DOB/etc.)."""
         import json
+        passengers = json.loads(self.passengers_json)
+        if not passenger_detail:
+            passengers = [
+                {'first_name': p.get('first_name', ''), 'last_name': p.get('last_name', '')}
+                for p in passengers if isinstance(p, dict)
+            ]
         return {
             'id': self.id,
             'reference': self.reference,
@@ -59,7 +66,7 @@ class Booking(db.Model):
             'airline': self.airline,
             'flight_number': self.flight_number,
             'cabin_class': self.cabin_class,
-            'passengers': json.loads(self.passengers_json),
+            'passengers': passengers,
             'passenger_count': self.passenger_count,
             'pricing': {
                 'base_fare': self.base_fare_usd,

@@ -1,3 +1,4 @@
+import html
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -40,6 +41,15 @@ def send_email(to_email: str, subject: str, html_body: str):
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
         return False
+
+
+def _e(value) -> str:
+    """HTML-escape any user-influenced value before it goes into an email body."""
+    return html.escape('' if value is None else str(value), quote=True)
+
+
+def _base_url() -> str:
+    return current_app.config.get('PUBLIC_BASE_URL', 'http://localhost:5000')
 
 
 def _eur(amount):
@@ -113,13 +123,13 @@ def _flight_leg_html(b: dict, show_ref: bool = True) -> str:
         ref_html = f"""
         <div class="ref-block">
           <div class="label">Booking Reference</div>
-          <div class="ref">{b.get('reference', '')}</div>
+          <div class="ref">{_e(b.get('reference', ''))}</div>
         </div>"""
 
     pax_items = ''
     for i, p in enumerate(passengers, 1):
         name = f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() or f"Passenger {i}"
-        pax_items += f'<li>👤 {name}</li>'
+        pax_items += f'<li>👤 {_e(name)}</li>'
 
     price_rows = f"""
       <tr><td>Base fare ({len(passengers)} pax)</td><td>{_eur(pricing.get('base_fare', 0))}</td></tr>
@@ -133,15 +143,15 @@ def _flight_leg_html(b: dict, show_ref: bool = True) -> str:
     {ref_html}
     <p class="section-title">Flight Details</p>
     <div class="route-row">
-      <div class="iata">{b.get('origin', '')}</div>
+      <div class="iata">{_e(b.get('origin', ''))}</div>
       <div class="arrow">——✈——</div>
-      <div class="iata">{b.get('destination', '')}</div>
+      <div class="iata">{_e(b.get('destination', ''))}</div>
     </div>
     <div class="meta-grid">
-      <div class="meta-item"><div class="label">Date</div><div class="value">{b.get('departure_date', '—')}</div></div>
-      <div class="meta-item"><div class="label">Airline</div><div class="value">{b.get('airline', '—')}</div></div>
-      <div class="meta-item"><div class="label">Flight</div><div class="value">{flight_num}</div></div>
-      <div class="meta-item"><div class="label">Cabin</div><div class="value">{cabin}</div></div>
+      <div class="meta-item"><div class="label">Date</div><div class="value">{_e(b.get('departure_date', '—'))}</div></div>
+      <div class="meta-item"><div class="label">Airline</div><div class="value">{_e(b.get('airline', '—'))}</div></div>
+      <div class="meta-item"><div class="label">Flight</div><div class="value">{_e(flight_num)}</div></div>
+      <div class="meta-item"><div class="label">Cabin</div><div class="value">{_e(cabin)}</div></div>
     </div>
     <p class="section-title">Passengers</p>
     <ul class="pax-list">{pax_items}</ul>
@@ -157,9 +167,9 @@ def _flight_leg_html(b: dict, show_ref: bool = True) -> str:
 def send_welcome_email(to_email: str, first_name: str):
     subject = "Welcome to Airfinder"
     content = f"""
-    <h2 style="margin-top:0;color:{_BRAND};">Welcome, {first_name}!</h2>
+    <h2 style="margin-top:0;color:{_BRAND};">Welcome, {_e(first_name)}!</h2>
     <p>Your account is ready. Search for flights worldwide with full price transparency.</p>
-    <a href="http://localhost:5000" class="cta">Search Flights</a>
+    <a href="{_base_url()}" class="cta">Search Flights</a>
     """
     send_email(to_email, subject, _email_wrapper(content))
 
@@ -168,8 +178,8 @@ def send_password_reset_email(to_email: str, first_name: str, reset_link: str):
     subject = "Reset Your Airfinder Password"
     content = f"""
     <h2 style="margin-top:0;color:{_BRAND};">Password Reset</h2>
-    <p>Hi {first_name}, we received a request to reset your password.</p>
-    <a href="{reset_link}" class="cta">Reset Password</a>
+    <p>Hi {_e(first_name)}, we received a request to reset your password.</p>
+    <a href="{_e(reset_link)}" class="cta">Reset Password</a>
     <p style="color:#6b7280;font-size:12px;margin-top:16px;">Link expires in 15 minutes. Didn't request this? Ignore this email.</p>
     """
     send_email(to_email, subject, _email_wrapper(content))
@@ -178,14 +188,14 @@ def send_password_reset_email(to_email: str, first_name: str, reset_link: str):
 def send_staff_credentials_email(to_email: str, first_name: str, role: str, temp_password: str):
     subject = "Your Airfinder Staff Account"
     content = f"""
-    <h2 style="margin-top:0;color:{_BRAND};">Welcome to the Team, {first_name}!</h2>
-    <p>Your staff account has been created with role: <strong>{role.replace('_', ' ').title()}</strong></p>
+    <h2 style="margin-top:0;color:{_BRAND};">Welcome to the Team, {_e(first_name)}!</h2>
+    <p>Your staff account has been created with role: <strong>{_e(role.replace('_', ' ').title())}</strong></p>
     <div style="background:{_BG};padding:16px;border-radius:8px;margin:16px 0;">
-      <p style="margin:4px 0;"><strong>Email:</strong> {to_email}</p>
-      <p style="margin:4px 0;"><strong>Temporary Password:</strong> <code style="background:#e0e0e0;padding:2px 6px;border-radius:4px;">{temp_password}</code></p>
+      <p style="margin:4px 0;"><strong>Email:</strong> {_e(to_email)}</p>
+      <p style="margin:4px 0;"><strong>Temporary Password:</strong> <code style="background:#e0e0e0;padding:2px 6px;border-radius:4px;">{_e(temp_password)}</code></p>
     </div>
     <p style="color:#dc2626;font-weight:700;">You must change this password on first login.</p>
-    <a href="http://localhost:5000/admin/login" class="cta">Login to Staff Portal</a>
+    <a href="{_base_url()}/admin/login.html" class="cta">Login to Staff Portal</a>
     """
     send_email(to_email, subject, _email_wrapper(content))
 
@@ -196,10 +206,10 @@ def send_booking_confirmation_email(to_email: str, first_name: str, booking: dic
     total = _eur(booking.get('pricing', {}).get('total', 0))
     content = f"""
     <h2 style="margin-top:0;color:{_BRAND};">Booking Confirmed ✓</h2>
-    <p>Hi {first_name}, your flight is booked. Safe travels!</p>
+    <p>Hi {_e(first_name)}, your flight is booked. Safe travels!</p>
     {_flight_leg_html(booking, show_ref=True)}
     <hr class="divider">
-    <a href="http://localhost:5000/account/bookings.html" class="cta">Manage My Booking</a>
+    <a href="{_base_url()}/account/bookings.html" class="cta">Manage My Booking</a>
     """
     send_email(to_email, subject, _email_wrapper(content))
 
@@ -210,16 +220,16 @@ def send_multicity_confirmation_email(to_email: str, first_name: str, bookings: 
     for i, b in enumerate(bookings, 1):
         legs_html += f"""
         <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
-          <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:{_BRAND};">LEG {i} &nbsp;·&nbsp; {b.get('reference', '')}</p>
+          <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:{_BRAND};">LEG {i} &nbsp;·&nbsp; {_e(b.get('reference', ''))}</p>
           {_flight_leg_html(b, show_ref=False)}
         </div>"""
 
     content = f"""
     <h2 style="margin-top:0;color:{_BRAND};">Multi-City Booking Confirmed ✓</h2>
-    <p>Hi {first_name}, your {len(bookings)}-leg itinerary is booked!</p>
+    <p>Hi {_e(first_name)}, your {len(bookings)}-leg itinerary is booked!</p>
     <div class="ref-block" style="margin-bottom:24px;">
       <div class="label">Group Reference</div>
-      <div class="ref">{group_ref}</div>
+      <div class="ref">{_e(group_ref)}</div>
     </div>
     <p class="section-title">Your Itinerary ({len(bookings)} flights)</p>
     {legs_html}
@@ -227,6 +237,6 @@ def send_multicity_confirmation_email(to_email: str, first_name: str, bookings: 
       <span style="font-size:13px;color:#6b7280;">Combined Total &nbsp;</span>
       <span style="font-size:20px;font-weight:800;color:#111;">{_eur(combined_total)}</span>
     </div>
-    <a href="http://localhost:5000/account/bookings.html" class="cta">Manage My Bookings</a>
+    <a href="{_base_url()}/account/bookings.html" class="cta">Manage My Bookings</a>
     """
     send_email(to_email, subject, _email_wrapper(content))
